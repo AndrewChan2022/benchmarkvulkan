@@ -498,6 +498,78 @@ void Renderer::createSynchronization()
     }
 }
 
+
+template<typename V>
+void fastVectorResize(V& v, size_t newSize) {
+    struct vt { typename V::value_type v; vt() {}};
+    static_assert(sizeof(vt[10]) == sizeof(typename V::value_type[10]), "alignment error");
+    typedef std::vector<vt, typename std::allocator_traits<typename V::allocator_type>::template rebind_alloc<vt>> V2;
+    reinterpret_cast<V2&>(v).resize(newSize);
+}
+
+// Function to generate grid vertices and indices with optimized resizing
+void generatePlane(std::vector<Vertex>& vertices, std::vector<unsigned int>& indices, int gridSize) {
+    constexpr float margin = 0.1f; // Margin to keep the plane within visible NDC
+    constexpr float startX = -1.0f + margin;
+    constexpr float endX = 1.0f - margin;
+    constexpr float startY = -1.0f + margin;
+    constexpr float endY = 1.0f - margin;
+    constexpr float zValue = 0.0f; // Keep Z constant
+
+    // Calculate total sizes
+    size_t numVertices = gridSize * gridSize;
+    size_t numIndices = (gridSize - 1) * (gridSize - 1) * 6; // Two triangles per quad
+
+    printf("vertices: %llum indices: %llum triangles:%llum\n", numVertices / 1024 / 1024, numIndices / 1024 / 1024, numIndices / 1024 / 1024 / 3);
+    printf("vertices bytes: %llum indices bytes: %llum\n", numVertices / 1024 / 1024 * sizeof(Vertex), numIndices / 1024 / 1024 * sizeof(unsigned int));
+
+    // Optimize resizing
+    fastVectorResize(vertices, numVertices);
+    fastVectorResize(indices, numIndices);
+
+    // Generate vertices
+    size_t vertexIndex = 0;
+    for (int y = 0; y < gridSize; ++y) {
+        for (int x = 0; x < gridSize; ++x) {
+            float fx = static_cast<float>(x) / (gridSize - 1);
+            float fy = static_cast<float>(y) / (gridSize - 1);
+
+            // Interpolate x and y between start and end with margin
+            float px = startX + fx * (endX - startX);
+            float py = startY + fy * (endY - startY);
+
+            vertices[vertexIndex].position[0] = px;      // X
+            vertices[vertexIndex].position[1] = py;      // Y
+            vertices[vertexIndex].position[2] = zValue;  // Z
+            vertices[vertexIndex].color[0] = fx;         // R
+            vertices[vertexIndex].color[1] = fy;         // G
+            vertices[vertexIndex].color[2] = 1.0f;       // B
+            ++vertexIndex;
+        }
+    }
+
+    // Generate indices
+    size_t indexIndex = 0;
+    for (int y = 0; y < gridSize - 1; ++y) {
+        for (int x = 0; x < gridSize - 1; ++x) {
+            unsigned int topLeft = y * gridSize + x;
+            unsigned int topRight = topLeft + 1;
+            unsigned int bottomLeft = topLeft + gridSize;
+            unsigned int bottomRight = bottomLeft + 1;
+
+            // First triangle
+            indices[indexIndex++] = topLeft;
+            indices[indexIndex++] = bottomLeft;
+            indices[indexIndex++] = topRight;
+
+            // Second triangle
+            indices[indexIndex++] = topRight;
+            indices[indexIndex++] = bottomLeft;
+            indices[indexIndex++] = bottomRight;
+        }
+    }
+}
+
 void Renderer::initializeResources()
 {
     /**
@@ -543,6 +615,12 @@ void Renderer::initializeResources()
     // Setup mIndices data
     mIndices.count = 3;
     uint32_t indexBufferSize = mIndices.count * sizeof(uint32_t);
+
+    const int GRID_SIZE = 3970;
+    generatePlane(mVertexBufferData, mIndexBufferData, GRID_SIZE);
+    vertexBufferSize = mVertexBufferData.size() * sizeof(Vertex);
+    mIndices.count = mIndexBufferData.size();
+    indexBufferSize = mIndices.count * sizeof(uint32_t);
 
     void* data;
     // Static data like vertex and index buffer should be stored on the device
@@ -591,7 +669,7 @@ void Renderer::initializeResources()
     // Map and copy
     data = mDevice.mapMemory(stagingBuffers.vertices.memory, 0, memReqs.size,
                              vk::MemoryMapFlags());
-    memcpy(data, mVertexBufferData, vertexBufferSize);
+    memcpy(data, mVertexBufferData.data(), vertexBufferSize);
     mDevice.unmapMemory(stagingBuffers.vertices.memory);
     mDevice.bindBufferMemory(stagingBuffers.vertices.buffer,
                              stagingBuffers.vertices.memory, 0);
@@ -630,7 +708,7 @@ void Renderer::initializeResources()
 
     data = mDevice.mapMemory(stagingBuffers.indices.memory, 0, indexBufferSize,
                              vk::MemoryMapFlags());
-    memcpy(data, mIndexBufferData, indexBufferSize);
+    memcpy(data, mIndexBufferData.data(), indexBufferSize);
     mDevice.unmapMemory(stagingBuffers.indices.memory);
     mDevice.bindBufferMemory(stagingBuffers.indices.buffer,
                              stagingBuffers.indices.memory, 0);
@@ -999,6 +1077,16 @@ void Renderer::render()
         return;
     }
     tStart = std::chrono::high_resolution_clock::now();
+
+    // Time management
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float deltaTime = std::chrono::duration<float>(currentTime - mLastTime).count();
+    if (deltaTime >= 1.0f) {
+        mFPS = mFrameCount;
+        mFrameCount = 0;
+        mLastTime = currentTime;
+    }
+    mFrameCount++;
 
     // Swap backbuffers
     vk::Result result;

@@ -56,6 +56,12 @@ inline std::vector<char> readFile(const std::string& filename) {
 
 // Renderer
 
+struct Vertex
+{
+	float position[3];
+	float color[3];
+};
+
 class Renderer
 {
 public:
@@ -68,6 +74,10 @@ public:
 
 	// Resize the window and internal data structures
 	void resize(unsigned width, unsigned height);
+
+	uint32_t getTriangleCount() { return mIndices.count / 3; }
+
+	uint32_t getFPS() { return mFPS; }
 
 protected:
 
@@ -105,20 +115,14 @@ protected:
 	// Set up the swapchain
 	void setupSwapchain(unsigned width, unsigned height);
 
-	struct Vertex
-	{
-		float position[3];
-		float color[3];
-	};
-
-	Vertex mVertexBufferData[3] =
+	std::vector<Vertex> mVertexBufferData =
 	{
 	  { { 1.0f,  1.0f, 0.0f },{ 1.0f, 0.0f, 0.0f } },
 	  { { -1.0f,  1.0f, 0.0f },{ 0.0f, 1.0f, 0.0f } },
 	  { { 0.0f, -1.0f, 0.0f },{ 0.0f, 0.0f, 1.0f } }
 	};
 
-	uint32_t mIndexBufferData[3] = { 0, 1, 2 };
+	std::vector<uint32_t> mIndexBufferData = { 0, 1, 2 };
 
 	std::chrono::time_point<std::chrono::steady_clock> tStart, tEnd;
 	float mElapsedTime = 0.0f;
@@ -210,4 +214,9 @@ protected:
 		vk::Buffer buffer;
 		vk::DescriptorBufferInfo descriptor;
 	}  mUniformDataVS;
+
+	// Timing variables for FPS calculation
+    std::chrono::time_point<std::chrono::high_resolution_clock> mLastTime = std::chrono::high_resolution_clock::now();
+    int mFrameCount = 0;
+	int mFPS = 0;
 };

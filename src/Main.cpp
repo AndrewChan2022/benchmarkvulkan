@@ -19,10 +19,25 @@ void xmain(int argc, const char** argv)
     // 📸 Create a renderer
     Renderer renderer(window);
 
+    // Timing variables for FPS calculation
+    auto lastTime = std::chrono::high_resolution_clock::now();
+
     // 🏁 Engine loop
     bool isRunning = true;
     while (isRunning)
     {
+        // Time management
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+        if (deltaTime >= 1.0f) {
+            lastTime = currentTime;
+
+            std::ostringstream oss;
+            oss.precision(2);
+            oss << "triangles: " << std::fixed << renderer.getTriangleCount() * 1.0 / 1024 / 1024 << "m FPS: " << renderer.getFPS();
+            window.setTitle(oss.str());
+        }
+        
         bool shouldRender = true;
 
         // ♻️ Update the event queue
