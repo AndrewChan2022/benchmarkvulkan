@@ -27,6 +27,7 @@ Then type the following in your [terminal](https://hyper.is/).
 git clone https://github.com/AndrewChan2022/benchmarkvulkan --recurse-submodules
 
 # 💿 go inside the folder
+# cd vulkan-seed
 cd benchmarkvulkan
 
 # 👯 If you forget to `recurse-submodules` you can always run:
