@@ -7,6 +7,8 @@
 
 A Vulkan repo you can use to get started with your own renderer.
 
+This repo forked from https://github.com/alaingalvan/vulkan-seed
+
 ## Setup
 
 First install:
