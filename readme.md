@@ -17,14 +17,17 @@ First install:
 
 - An IDE such as [Visual Studio](https://visualstudio.microsoft.com/downloads/), [XCode](https://developer.apple.com/xcode/), or a compiler such as [GCC](https://gcc.gnu.org/).
 
+- Install VulkanSDK  https://www.lunarg.com/vulkan-sdk/
+
 Then type the following in your [terminal](https://hyper.is/).
 
 ```bash
 # 🐑 Clone the repo
-git clone https://github.com/alaingalvan/vulkan-seed --recurse-submodules
+# git clone https://github.com/alaingalvan/vulkan-seed --recurse-submodules
+git clone https://github.com/AndrewChan2022/benchmarkvulkan --recurse-submodules
 
 # 💿 go inside the folder
-cd vulkan-seed
+cd benchmarkvulkan
 
 # 👯 If you forget to `recurse-submodules` you can always run:
 git submodule update --init
